@@ -5,6 +5,14 @@ import { useAuth } from '../hooks/useAuth';
 function AdminLayout() {
   const { user, loading, isAdmin } = useAuth();
 
+  // Add detailed logging for debugging
+  console.log('[AdminLayout] Checking access:', {
+    loading,
+    user: !!user,
+    isAdmin,
+    pathname: window.location.pathname
+  });
+
   // Show loading indicator while checking auth and admin status
   if (loading) {
     return (

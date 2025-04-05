@@ -16,13 +16,16 @@ export function UserMenu() {
   const handleAction = async (item) => {
     if (item.id === 'logout') {
       try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
+        // Always attempt to sign out, but don't throw on error
+        await supabase.auth.signOut().catch(console.error);
+        
+        // Always redirect to login and show success message
         toast.success('Signed out successfully');
         navigate('/auth/login');
       } catch (error) {
-        console.error('Error signing out:', error);
-        toast.error('Failed to sign out');
+        console.error('Error during logout:', error);
+        // Still redirect to login for safety
+        navigate('/auth/login');
       }
     } else if (item.path) {
       navigate(item.path);

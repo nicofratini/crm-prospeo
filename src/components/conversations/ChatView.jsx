@@ -3,14 +3,8 @@ import { format } from 'date-fns';
 import clsx from 'clsx';
 
 function ChatMessage({ message, isConsecutive }) {
-  // Early return if message is null or undefined
-  if (!message) {
-    return null;
-  }
-
-  // Enhanced null checks and validation
-  if (typeof message !== 'object') {
-    console.warn('Invalid message object received:', message);
+  // Early return if message is null, undefined, or not an object
+  if (!message || typeof message !== 'object') {
     return null;
   }
 
@@ -70,7 +64,6 @@ export function ChatView({ conversation, onSendMessage }) {
 
   // Enhanced validation for conversation object
   if (!conversation || typeof conversation !== 'object') {
-    console.warn('Invalid conversation object:', conversation);
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-gray-500">No conversation selected</p>
@@ -81,11 +74,11 @@ export function ChatView({ conversation, onSendMessage }) {
   // Ensure messages is an array and filter out invalid messages
   const messages = Array.isArray(conversation.messages) 
     ? conversation.messages
-        .filter(msg => msg !== null && msg !== undefined) // Explicitly filter out null/undefined
+        .filter(msg => msg && typeof msg === 'object' && msg !== null)
         .filter(msg => 
-          msg && 
-          typeof msg === 'object' &&
+          msg.type && 
           typeof msg.type === 'string' &&
+          msg.text &&
           typeof msg.text === 'string' &&
           msg.timestamp
         )
@@ -119,6 +112,7 @@ export function ChatView({ conversation, onSendMessage }) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.map((message, index) => {
+          // Additional null check before accessing previous message
           const previousMessage = index > 0 ? messages[index - 1] : null;
           const isConsecutive = previousMessage && 
             previousMessage.type === message.type &&

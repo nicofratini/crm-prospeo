@@ -60,7 +60,16 @@ const QuickAccessItem = ({ image, name, lastSeen, amount, onClick }) => (
   </button>
 );
 
-export default function Sidebar({ isOpen, onClose, currentPage = 'dashboard', onMenuItemClick = () => {} }) {
+export default function Sidebar({ isOpen, onClose, currentPage, onMenuItemClick }) {
+  // Add prop validation
+  const handleMenuItemClick = (menuId) => {
+    if (typeof onMenuItemClick === 'function') {
+      onMenuItemClick(menuId);
+    } else {
+      console.warn('onMenuItemClick prop is not a function');
+    }
+  };
+
   return (
     <aside className={clsx(
       'fixed inset-y-0 left-0 z-40 w-80 bg-white dark:bg-dark-card border-r border-gray-100 dark:border-gray-800 lg:static transform transition-transform duration-300 ease-in-out',
@@ -86,7 +95,7 @@ export default function Sidebar({ isOpen, onClose, currentPage = 'dashboard', on
             {menuItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => onMenuItemClick(item.id)}
+                onClick={() => handleMenuItemClick(item.id)}
                 className={clsx(
                   'flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200',
                   currentPage === item.id
@@ -111,14 +120,14 @@ export default function Sidebar({ isOpen, onClose, currentPage = 'dashboard', on
                 name="Alice Freeman"
                 lastSeen="il y a 2 jours"
                 amount="200,000"
-                onClick={() => onMenuItemClick('contacts')}
+                onClick={() => handleMenuItemClick('contacts')}
               />
               <QuickAccessItem
                 image="https://cdn.usegalileo.ai/stability/d4e7d763-28f3-4af2-bc57-a26db12c522b.png"
                 name="Bob Smith"
                 lastSeen="il y a 5 jours"
                 amount="350,000"
-                onClick={() => onMenuItemClick('contacts')}
+                onClick={() => handleMenuItemClick('contacts')}
               />
             </div>
           </div>
@@ -172,7 +181,7 @@ function PhoneIcon() {
 function BotIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
-      <path d="M168,128a8,8,0,1,1-8-8A8,8,0,0,1,168,128ZM96,120a8,8,0,1,0,8,8A8,8,0,0,0,96,120Zm128,8c0,39.7-35.89,72-80,72s-80-32.3-80-72c0-26.26,15.93-49.48,40-62.59V56a24,24,0,0,1,24-24h32a24,24,0,0,1,24,24v9.41C208.07,78.52,224,101.74,224,128ZM160,56a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8V74.25a115.46,115.46,0,0,1,32-4.25,115.46,115.46,0,0,1,32,4.25Zm48,72c0-30.88-30.06-56-64-56S80,97.12,80,128s30.06,56,64,56S208,158.88,208,128ZM72,96a8,8,0,0,0-8-8H48a8,8,0,0,0,0,16H64A8,8,0,0,0,72,96Zm144-8h-8a8,8,0,0,0,0,16h8a8,8,0,0,0,0-16ZM48,136H32a8,8,0,0,0,0,16H48a8,8,0,0,0,0-16Zm176,0H208a8,8,0,0,0,0,16h16a8,8,0,0,0,0-16Z" />
+      <path d="M168,128a8,8,0,1,1-8-8A8,8,0,0,1,168,128ZM96,120a8,8,0,1,0,8,8A8,8,0,0,0,96,120Zm128,8c0,39.7-35.89,72-80,72s-80-32.3-80-72c0-26.26,15.93-49.48,40-62.59V56a24,24,0,0,1,24-24h32a24,24,0,0,1,24,24v9.41C208.07,78.52,224,101.74,224,128ZM160,56a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8V74.25a115.46,115.46,0,0,1,32-4.25,115.46,115.46,0,0,1,32,4.25Zm48,72c0-30.88-30.06-56-64-56S80,97.12,80,128s30.06,56,64,56S208,158.88,208,128Z" />
     </svg>
   );
 }

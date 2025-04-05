@@ -6,7 +6,11 @@ export default defineEventHandler(async (event) => {
     console.log('[Proxy API] Invoking Edge Function: list-elevenlabs-voices');
     const supabase = await serverSupabaseClient(event);
 
-    const { data, error: invokeError } = await supabase.functions.invoke('list-elevenlabs-voices');
+    const { data, error: invokeError } = await supabase.functions.invoke('list-elevenlabs-voices', {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
 
     if (invokeError) {
       console.error('[Proxy API] Edge Function error:', invokeError);
@@ -16,7 +20,7 @@ export default defineEventHandler(async (event) => {
     console.log('[Proxy API] Edge Function Response:', data);
     return data;
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Proxy API] Error:', error);
     throw createError({
       statusCode: error.status || 500,

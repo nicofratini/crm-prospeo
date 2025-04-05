@@ -7,15 +7,19 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:voices": "node test-elevenlabs-voices.js"
+    "test:voices": "node test-elevenlabs-voices.js",
+    "server": "node server.js"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@hookform/resolvers": "^3.3.2",
     "@supabase/supabase-js": "^2.39.1",
     "clsx": "^2.0.0",
+    "cors": "^2.8.5",
     "date-fns": "^2.30.0",
+    "dotenv": "^16.4.7",
     "elevenlabs-node": "^2.0.1",
+    "express": "^4.21.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.49.2",

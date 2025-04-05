@@ -77,14 +77,20 @@ serve(async (req) => {
 
     console.log('[list-elevenlabs-voices] Fetching voices from ElevenLabs API...');
     
-    // Test ElevenLabs API connectivity
+    // Test ElevenLabs API connectivity with timeout
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const testResponse = await fetch('https://api.elevenlabs.io/v1/voices', {
         headers: {
           'Accept': 'application/json',
           'xi-api-key': apiKey
-        }
+        },
+        signal: controller.signal
       });
+
+      clearTimeout(timeout);
 
       if (!testResponse.ok) {
         const errorData = await testResponse.json().catch(() => ({}));
@@ -106,6 +112,20 @@ serve(async (req) => {
         );
       }
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.error('[list-elevenlabs-voices] Request timeout');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Timeout error',
+            details: 'Request to ElevenLabs API timed out'
+          }),
+          { 
+            status: 504,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
       console.error('[list-elevenlabs-voices] Failed to connect to ElevenLabs API:', error);
       return new Response(
         JSON.stringify({ 

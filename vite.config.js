@@ -18,9 +18,20 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-    },
+    }
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'recharts', '@headlessui/react']
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api/elevenlabs': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/elevenlabs/, '/elevenlabs')
+      }
+    }
   }
 });

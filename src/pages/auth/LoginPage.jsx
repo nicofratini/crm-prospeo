@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,13 +12,19 @@ const loginSchema = z.object({
 });
 
 function LoginPage() {
-  const { login, loading, error } = useAuth();
+  const navigate = useNavigate();
+  const { login, actionLoading, error } = useAuth();
+  
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = (data) => {
-    login(data);
+  const onSubmit = async (data) => {
+    const success = await login(data);
+    if (success) {
+      // Navigation is now handled in the login function
+      console.log('Login successful, redirecting...');
+    }
   };
 
   return (
@@ -72,9 +78,9 @@ function LoginPage() {
         <Button
           type="submit"
           className="w-full"
-          disabled={loading}
+          disabled={actionLoading}
         >
-          {loading ? 'Signing in...' : 'Sign In'}
+          {actionLoading ? 'Signing in...' : 'Sign In'}
         </Button>
       </form>
 
