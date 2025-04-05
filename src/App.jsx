@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Header } from './components/ui/Header';
 import Sidebar from './components/Sidebar';
@@ -19,93 +19,50 @@ import { MobileMenu } from './components/ui/MobileMenu';
 
 export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [subPage, setSubPage] = useState(null);
-  const [entityId, setEntityId] = useState(null);
-
-  const handleMenuItemClick = (page, sub = null, id = null) => {
-    setCurrentPage(page);
-    setSubPage(sub);
-    setEntityId(id);
-    setIsSidebarOpen(false);
-  };
-
-  const renderPage = () => {
-    // Handle Properties pages
-    if (currentPage === 'properties') {
-      if (subPage === 'add') {
-        return <AddPropertyPage />;
-      }
-      if (subPage === 'view' && entityId) {
-        return <PropertyDetailPage propertyId={entityId} />;
-      }
-      if (subPage === 'edit' && entityId) {
-        return <EditPropertyPage propertyId={entityId} />;
-      }
-      return <PropertiesPage 
-        onAddProperty={() => handleMenuItemClick('properties', 'add')}
-        onViewProperty={(id) => handleMenuItemClick('properties', 'view', id)}
-        onEditProperty={(id) => handleMenuItemClick('properties', 'edit', id)}
-      />;
-    }
-
-    // Handle Contacts pages
-    if (currentPage === 'contacts') {
-      if (subPage === 'view' && entityId) {
-        return <ContactDetailPage contactId={entityId} />;
-      }
-      if (subPage === 'edit' && entityId) {
-        return <EditContactPage contactId={entityId} />;
-      }
-      return <ContactsPage 
-        onViewContact={(id) => handleMenuItemClick('contacts', 'view', id)}
-        onEditContact={(id) => handleMenuItemClick('contacts', 'edit', id)}
-      />;
-    }
-
-    // Other pages
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'appointments':
-        return <AppointmentsPage />;
-      case 'call-history':
-        return <CallHistoryPage />;
-      case 'ai-agent':
-        return <AiAgentPage />;
-      case 'settings':
-        return <SettingsPage />;
-      default:
-        return <Dashboard />;
-    }
-  };
+  const navigate = useNavigate();
 
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg dark:text-gray-100 transition-colors duration-200">
-        <Header 
-          onMenuClick={() => setIsSidebarOpen(true)} 
-          onNavigate={setCurrentPage}
-        />
-        <div className="max-w-[1440px] mx-auto">
-          <div className="flex">
-            <Sidebar 
-              isOpen={isSidebarOpen} 
-              onClose={() => setIsSidebarOpen(false)}
-              currentPage={currentPage}
-              onMenuItemClick={handleMenuItemClick}
-            />
-            {renderPage()}
-          </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg dark:text-gray-100 transition-colors duration-200">
+      <Header 
+        onMenuClick={() => setIsSidebarOpen(true)} 
+        onNavigate={(page) => navigate(`/${page}`)}
+      />
+      <div className="max-w-[1440px] mx-auto">
+        <div className="flex">
+          <Sidebar 
+            isOpen={isSidebarOpen} 
+            onClose={() => setIsSidebarOpen(false)}
+            onMenuItemClick={(page) => {
+              navigate(`/${page}`);
+              setIsSidebarOpen(false);
+            }}
+          />
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/contacts/:contactId" element={<ContactDetailPage />} />
+            <Route path="/contacts/edit/:contactId" element={<EditContactPage />} />
+            <Route path="/properties" element={<PropertiesPage />} />
+            <Route path="/properties/:propertyId" element={<PropertyDetailPage />} />
+            <Route path="/properties/add" element={<AddPropertyPage />} />
+            <Route path="/properties/edit/:propertyId" element={<EditPropertyPage />} />
+            <Route path="/appointments" element={<AppointmentsPage />} />
+            <Route path="/call-history" element={<CallHistoryPage />} />
+            <Route path="/ai-agent" element={<AiAgentPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
         </div>
-        <MobileMenu 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)}
-          currentPage={currentPage}
-          onNavigate={handleMenuItemClick}
-        />
-        <Toaster position="top-right" />
       </div>
-    </BrowserRouter>
+      <MobileMenu 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)}
+        onNavigate={(page) => {
+          navigate(`/${page}`);
+          setIsSidebarOpen(false);
+        }}
+      />
+      <Toaster position="top-right" />
+    </div>
   );
 }

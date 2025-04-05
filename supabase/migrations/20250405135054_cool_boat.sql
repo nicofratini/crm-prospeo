@@ -1,31 +1,37 @@
 /*
-  # Fix User References and Remove Profiles Table
-
+  # User System Migration
+  
   1. Changes
-    - Drop redundant profiles table
-    - Add avatar_url to users table if missing
-    - Update all foreign keys to reference public.users instead of auth.users
-    - Remove RLS policies that depend on auth.uid()
-
-  2. Tables Modified
-    - Drop: profiles
-    - Modify FK: properties, contacts, ai_agents, tags, call_history, call_tags
-    - Add Column: users (avatar_url)
-
-  3. Security
+    - Add avatar_url to users table
+    - Clean up old profiles system
+    - Update foreign key references to point to users table
     - Remove auth.uid() based RLS policies
-    - Tables will use Edge Function-based access control
+    - Enable RLS on all tables
+    
+  2. Safety
+    - All operations use IF EXISTS/IF NOT EXISTS
+    - Safe drops with CASCADE where needed
+    - Proper error handling for missing tables
 */
 
 -- First, ensure we have the avatar_url column in users table
-ALTER TABLE public.users
-ADD COLUMN IF NOT EXISTS avatar_url text;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users' 
+        AND column_name = 'avatar_url'
+    ) THEN
+        ALTER TABLE public.users ADD COLUMN avatar_url text;
+    END IF;
+END $$;
 
--- Drop profiles table and related objects
-DROP TRIGGER IF EXISTS handle_profiles_updated_at ON public.profiles;
+-- Drop auth trigger if it exists
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP FUNCTION IF EXISTS public.handle_new_user();
-DROP TABLE IF EXISTS public.profiles;
+
+-- Drop function if it exists (with CASCADE to handle dependencies)
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 
 -- Update foreign key references in properties
 ALTER TABLE public.properties 

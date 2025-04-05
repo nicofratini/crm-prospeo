@@ -4,12 +4,19 @@ import clsx from 'clsx';
 
 function ChatMessage({ message, isConsecutive }) {
   // Enhanced null check to catch both null and undefined messages
-  // Also check for required properties
-  if (!message || typeof message !== 'object' || !message.type || !message.text || !message.timestamp) {
+  // Also check for required properties before any property access
+  if (!message || typeof message !== 'object') {
     console.warn('Invalid message object received:', message);
     return null;
   }
+
+  // Additional validation for required properties
+  if (!message.type || !message.text || !message.timestamp) {
+    console.warn('Message object missing required properties:', message);
+    return null;
+  }
   
+  // Only access message.type after validation
   const isCustomer = message.type === 'customer';
   
   return (
@@ -62,9 +69,13 @@ export function ChatView({ conversation, onSendMessage }) {
     return null;
   }
 
-  // Filter out any invalid messages before processing
-  const validMessages = conversation.messages.filter(msg => 
-    msg && typeof msg === 'object' && msg.type && msg.text && msg.timestamp
+  // Enhanced validation for messages array
+  const validMessages = (conversation.messages || []).filter(msg => 
+    msg && 
+    typeof msg === 'object' && 
+    typeof msg.type === 'string' && 
+    typeof msg.text === 'string' && 
+    msg.timestamp
   );
 
   return (
@@ -73,8 +84,8 @@ export function ChatView({ conversation, onSendMessage }) {
       <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
         <div className="relative">
           <img
-            src={conversation.customer?.avatar}
-            alt={conversation.customer?.name}
+            src={conversation.customer?.avatar || '/default-avatar.png'}
+            alt={conversation.customer?.name || 'Customer'}
             className="w-10 h-10 rounded-full"
           />
           <span className={clsx(
@@ -84,7 +95,7 @@ export function ChatView({ conversation, onSendMessage }) {
         </div>
         <div>
           <h2 className="text-base font-medium text-gray-900 dark:text-white">
-            {conversation.customer?.name}
+            {conversation.customer?.name || 'Unknown Customer'}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {conversation.customer?.status === 'online' ? 'Online' : 'Offline'}
@@ -95,9 +106,6 @@ export function ChatView({ conversation, onSendMessage }) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
         {validMessages.map((message, index) => {
-          // Additional null check before processing each message
-          if (!message) return null;
-          
           const previousMessage = index > 0 ? validMessages[index - 1] : null;
           const isConsecutive = previousMessage && 
             previousMessage.type === message.type &&
