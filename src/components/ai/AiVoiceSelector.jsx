@@ -74,34 +74,28 @@ export function AiVoiceSelector({ selectedVoiceId, onVoiceSelect }) {
 
   useEffect(() => {
     const fetchVoices = async () => {
+      console.log('[AiVoiceSelector] Fetching voices via proxy API...');
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-elevenlabs-voices`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
+        const response = await fetch('/api/elevenlabs/voices');
+        
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
-        if (!Array.isArray(data.voices)) {
+        if (!data?.voices || !Array.isArray(data.voices)) {
           throw new Error('Invalid response format from server');
         }
 
+        console.log('[AiVoiceSelector] Successfully fetched voices:', data.voices.length);
         setVoices(data.voices);
         setError(null);
 
       } catch (err) {
-        console.error('Error fetching voices:', err);
+        console.error('[AiVoiceSelector] Error fetching voices:', err);
         setError(err.message);
-        toast.error(`Error loading voices: ${err.message}`);
+        toast.error('Failed to load voice list');
       } finally {
         setLoading(false);
       }
@@ -127,6 +121,22 @@ export function AiVoiceSelector({ selectedVoiceId, onVoiceSelect }) {
     }
     return true;
   });
+
+  if (loading) {
+    return (
+      <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+        Loading voices...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-8 text-center text-red-500">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <Card>
@@ -164,30 +174,16 @@ export function AiVoiceSelector({ selectedVoiceId, onVoiceSelect }) {
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-            Loading voices...
-          </div>
-        ) : error ? (
-          <div className="py-8 text-center text-red-500">
-            {error}
-          </div>
-        ) : filteredVoices.length === 0 ? (
-          <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-            No voices found
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredVoices.map((voice) => (
-              <VoiceCard
-                key={voice.voice_id}
-                voice={voice}
-                selected={voice.voice_id === selectedVoiceId}
-                onSelect={onVoiceSelect}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredVoices.map((voice) => (
+            <VoiceCard
+              key={voice.voice_id}
+              voice={voice}
+              selected={voice.voice_id === selectedVoiceId}
+              onSelect={onVoiceSelect}
+            />
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

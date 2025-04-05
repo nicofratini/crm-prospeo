@@ -4,7 +4,7 @@ import { NotificationsMenu } from './NotificationsMenu';
 import { UserMenu } from './UserMenu';
 import { ThemeToggle } from './ThemeToggle';
 
-export function Header({ onMenuClick, onNavigate }) {
+export function Header({ onMenuClick }) {
   return (
     <header className="sticky top-0 z-30 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-dark-card">
       <div className="max-w-[1440px] mx-auto px-4 h-16 flex items-center justify-between gap-4">
@@ -27,7 +27,7 @@ export function Header({ onMenuClick, onNavigate }) {
         <div className="flex items-center gap-2">
           <NotificationsMenu />
           <ThemeToggle />
-          <UserMenu onNavigate={onNavigate} />
+          <UserMenu />
         </div>
       </div>
     </header>

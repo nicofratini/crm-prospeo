@@ -3,20 +3,20 @@ import { format } from 'date-fns';
 import clsx from 'clsx';
 
 function ChatMessage({ message, isConsecutive }) {
-  // Enhanced null check to catch both null and undefined messages
-  // Also check for required properties before any property access
+  // Enhanced null checks and validation
   if (!message || typeof message !== 'object') {
     console.warn('Invalid message object received:', message);
     return null;
   }
 
-  // Additional validation for required properties
-  if (!message.type || !message.text || !message.timestamp) {
-    console.warn('Message object missing required properties:', message);
+  // Validate required properties exist and are of correct type
+  if (!message.type || typeof message.type !== 'string' ||
+      !message.text || typeof message.text !== 'string' ||
+      !message.timestamp) {
+    console.warn('Message object missing required properties or has invalid types:', message);
     return null;
   }
   
-  // Only access message.type after validation
   const isCustomer = message.type === 'customer';
   
   return (
@@ -63,20 +63,26 @@ export function ChatView({ conversation, onSendMessage }) {
     setNewMessage('');
   };
 
-  // Add safety check for conversation and messages
-  if (!conversation || !Array.isArray(conversation.messages)) {
+  // Enhanced validation for conversation object
+  if (!conversation || typeof conversation !== 'object') {
     console.warn('Invalid conversation object:', conversation);
-    return null;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-500">No conversation selected</p>
+      </div>
+    );
   }
 
-  // Enhanced validation for messages array
-  const validMessages = (conversation.messages || []).filter(msg => 
-    msg && 
-    typeof msg === 'object' && 
-    typeof msg.type === 'string' && 
-    typeof msg.text === 'string' && 
-    msg.timestamp
-  );
+  // Ensure messages is an array and filter out invalid messages
+  const messages = Array.isArray(conversation.messages) 
+    ? conversation.messages.filter(msg => 
+        msg && 
+        typeof msg === 'object' &&
+        typeof msg.type === 'string' &&
+        typeof msg.text === 'string' &&
+        msg.timestamp
+      )
+    : [];
 
   return (
     <>
@@ -105,8 +111,8 @@ export function ChatView({ conversation, onSendMessage }) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
-        {validMessages.map((message, index) => {
-          const previousMessage = index > 0 ? validMessages[index - 1] : null;
+        {messages.map((message, index) => {
+          const previousMessage = index > 0 ? messages[index - 1] : null;
           const isConsecutive = previousMessage && 
             previousMessage.type === message.type &&
             new Date(message.timestamp).getTime() - 
