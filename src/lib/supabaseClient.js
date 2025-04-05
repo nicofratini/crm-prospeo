@@ -26,7 +26,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: {
       getItem: (key) => {
         try {
-          return localStorage.getItem(key);
+          const value = localStorage.getItem(key);
+          console.log('[Supabase Storage] Reading:', key, value ? '(found)' : '(not found)');
+          return value;
         } catch (error) {
           console.error('[Supabase Storage] Error reading from localStorage:', error);
           return null;
@@ -34,6 +36,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       },
       setItem: (key, value) => {
         try {
+          console.log('[Supabase Storage] Writing:', key);
           localStorage.setItem(key, value);
         } catch (error) {
           console.error('[Supabase Storage] Error writing to localStorage:', error);
@@ -41,6 +44,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       },
       removeItem: (key) => {
         try {
+          console.log('[Supabase Storage] Removing:', key);
           localStorage.removeItem(key);
         } catch (error) {
           console.error('[Supabase Storage] Error removing from localStorage:', error);
@@ -50,24 +54,34 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Set up auth state change listener
+// Set up auth state change listener with enhanced logging
 supabase.auth.onAuthStateChange((event, session) => {
-  console.log('[Supabase Auth] Auth state changed:', event, session?.user?.email);
+  console.log('[Supabase Auth] Event:', event);
+  console.log('[Supabase Auth] Session:', session ? {
+    user: session.user.email,
+    expires_at: new Date(session.expires_at * 1000).toISOString(),
+    refresh_token: session.refresh_token ? '(present)' : '(missing)'
+  } : 'null');
   
   if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-    // Clear any cached data
+    console.log('[Supabase Auth] Clearing session data');
     localStorage.removeItem('supabase.auth.token');
-    console.log('[Supabase Auth] Session cleared due to:', event);
+    localStorage.removeItem('supabase.auth.refreshToken');
   }
   
   if (event === 'TOKEN_REFRESHED') {
     console.log('[Supabase Auth] Token refreshed successfully');
+  }
+
+  if (event === 'SIGNED_IN') {
+    console.log('[Supabase Auth] User signed in successfully');
   }
 });
 
 // Export a function to test the connection
 export async function testSupabaseConnection() {
   try {
+    console.log('[Supabase] Testing connection...');
     const { data, error } = await supabase.from('users').select('count').limit(1);
     if (error) throw error;
     console.log('[Supabase] Connection test successful');

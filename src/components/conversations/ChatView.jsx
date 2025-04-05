@@ -3,21 +3,19 @@ import { format } from 'date-fns';
 import clsx from 'clsx';
 
 function ChatMessage({ message, isConsecutive }) {
-  // Early return if message is null, undefined, or not an object
-  if (!message || typeof message !== 'object') {
-    console.warn('Invalid message received:', message);
+  // Return null if message is null/undefined
+  if (!message) {
+    console.warn('Message object is null or undefined');
     return null;
   }
 
-  // Destructure with type checking
+  // Enhanced validation to catch null/undefined messages and missing type
+  if (!message?.type || !message?.text) {
+    console.warn('Invalid message or missing required fields:', message);
+    return null;
+  }
+
   const { type, text, timestamp } = message;
-  
-  // Validate required fields
-  if (!type || !text) {
-    console.warn('Message missing required fields:', message);
-    return null;
-  }
-
   const isCustomer = type === 'customer';
   const messageTime = timestamp ? new Date(timestamp) : new Date();
   
@@ -76,7 +74,7 @@ export function ChatView({ conversation, onSendMessage }) {
 
   // Ensure messages is an array and filter out invalid messages
   const messages = Array.isArray(conversation.messages) 
-    ? conversation.messages.filter(msg => msg && typeof msg === 'object' && msg.type && msg.text)
+    ? conversation.messages.filter(msg => msg && typeof msg === 'object' && msg?.type && msg?.text)
     : [];
 
   // Ensure customer object exists with default values
@@ -114,6 +112,12 @@ export function ChatView({ conversation, onSendMessage }) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.map((message, index) => {
+          // Skip rendering if message is invalid
+          if (!message || typeof message !== 'object') {
+            console.warn('Invalid message object at index:', index);
+            return null;
+          }
+
           const previousMessage = index > 0 ? messages[index - 1] : null;
           const isConsecutive = previousMessage && 
             previousMessage.type === message.type &&
