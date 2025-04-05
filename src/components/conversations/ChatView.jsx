@@ -3,8 +3,13 @@ import { format } from 'date-fns';
 import clsx from 'clsx';
 
 function ChatMessage({ message, isConsecutive }) {
+  // Early return if message is null or undefined
+  if (!message) {
+    return null;
+  }
+
   // Enhanced null checks and validation
-  if (!message || typeof message !== 'object') {
+  if (typeof message !== 'object') {
     console.warn('Invalid message object received:', message);
     return null;
   }
@@ -75,13 +80,15 @@ export function ChatView({ conversation, onSendMessage }) {
 
   // Ensure messages is an array and filter out invalid messages
   const messages = Array.isArray(conversation.messages) 
-    ? conversation.messages.filter(msg => 
-        msg && 
-        typeof msg === 'object' &&
-        typeof msg.type === 'string' &&
-        typeof msg.text === 'string' &&
-        msg.timestamp
-      )
+    ? conversation.messages
+        .filter(msg => msg !== null && msg !== undefined) // Explicitly filter out null/undefined
+        .filter(msg => 
+          msg && 
+          typeof msg === 'object' &&
+          typeof msg.type === 'string' &&
+          typeof msg.text === 'string' &&
+          msg.timestamp
+        )
     : [];
 
   return (

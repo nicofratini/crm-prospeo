@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardContent } from '../ui/Card';
+import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { AiVoiceSelector } from '../ai/AiVoiceSelector';
 import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabaseClient';
 
 export function AiAgentStep({ onComplete }) {
   const [loading, setLoading] = useState(true);
@@ -13,23 +14,13 @@ export function AiAgentStep({ onComplete }) {
     elevenlabs_voice_id: null
   });
 
-  // Load placeholder configuration
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-ai-agent`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-          }
-        );
-
-        const data = await response.json();
+        const { data, error } = await supabase.functions.invoke('get-ai-agent');
         
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch agent configuration');
+        if (error) {
+          throw error;
         }
 
         if (data.agent) {
@@ -62,22 +53,11 @@ export function AiAgentStep({ onComplete }) {
     setSaving(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-ai-agent`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(config)
-        }
-      );
+      const { error } = await supabase.functions.invoke('update-ai-agent', {
+        body: config
+      });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update agent configuration');
-      }
+      if (error) throw error;
 
       toast.success('Agent configuration saved successfully');
       onComplete?.();
@@ -101,16 +81,16 @@ export function AiAgentStep({ onComplete }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Card>
-        <CardHeader>
+        <div className="p-6 border-b border-gray-100 dark:border-gray-800">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Configuration de l'Agent IA
+            AI Agent Configuration
           </h2>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nom de l'Agent *
+                Agent Name *
               </label>
               <input
                 type="text"
@@ -123,24 +103,24 @@ export function AiAgentStep({ onComplete }) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Prompt Système
+                System Prompt
               </label>
               <textarea
                 value={config.system_prompt}
                 onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
                 rows={4}
-                placeholder="Instructions pour l'agent..."
+                placeholder="Instructions for the agent..."
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-hover text-gray-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Voix de l'Agent *
+                Agent Voice *
               </label>
               <AiVoiceSelector
                 selectedVoiceId={config.elevenlabs_voice_id}
-                onVoiceSelect={(voiceId) => setConfig({ ...config, elevenlabs_voice_id: voiceId })}
+                onSelect={(voiceId) => setConfig({ ...config, elevenlabs_voice_id: voiceId })}
               />
             </div>
 
@@ -149,11 +129,11 @@ export function AiAgentStep({ onComplete }) {
                 type="submit"
                 disabled={saving || !config.agent_name || !config.elevenlabs_voice_id}
               >
-                {saving ? 'Enregistrement...' : 'Continuer'}
+                {saving ? 'Saving...' : 'Continue'}
               </Button>
             </div>
           </form>
-        </CardContent>
+        </div>
       </Card>
     </div>
   );

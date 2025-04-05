@@ -1,61 +1,35 @@
 import React from 'react';
-import { Outlet, Link, Navigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { Outlet, Navigate, Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 function AdminLayout() {
-  const [loading, setLoading] = React.useState(true);
-  const [isAdmin, setIsAdmin] = React.useState(false);
-  const [user, setUser] = React.useState(null);
+  const { user, loading, isAdmin } = useAuth();
 
-  React.useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        if (!session) {
-          setLoading(false);
-          return;
-        }
-
-        // Get user details including admin status
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-
-        if (userError) throw userError;
-
-        setUser(session.user);
-        setIsAdmin(userData?.is_admin || false);
-
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
+  // Show loading indicator while checking auth and admin status
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Loading...</p>
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-gray-500 dark:text-gray-400">Verifying access...</p>
+        </div>
       </div>
     );
   }
 
+  // Redirect to login if not authenticated
   if (!user) {
+    console.log('[AdminLayout] Redirecting: User not logged in');
     return <Navigate to="/auth/login" replace />;
   }
 
+  // Redirect to dashboard if not admin
   if (!isAdmin) {
+    console.log(`[AdminLayout] Redirecting: User ${user.email} is not an admin`);
     return <Navigate to="/dashboard" replace />;
   }
+
+  console.log(`[AdminLayout] Admin access granted for user ${user.email}`);
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-dark-bg">
