@@ -1,18 +1,18 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { corsHeaders } from '../_shared/cors.ts';
 
-console.log("[list-elevenlabs-voices] Function started");
+console.log("[list-elevenlabs-shared-voices] Function started");
 
 serve(async (req) => {
-  console.log(`[list-elevenlabs-voices] Received ${req.method} request`);
+  console.log(`[list-elevenlabs-shared-voices] Received ${req.method} request`);
 
   if (req.method === 'OPTIONS') {
-    console.log("[list-elevenlabs-voices] Handling OPTIONS preflight request");
+    console.log("[list-elevenlabs-shared-voices] Handling OPTIONS preflight request");
     return new Response('ok', { headers: corsHeaders });
   }
 
   if (req.method !== 'GET') {
-    console.log("[list-elevenlabs-voices] Invalid method:", req.method);
+    console.log("[list-elevenlabs-shared-voices] Invalid method:", req.method);
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
       { 
@@ -25,7 +25,7 @@ serve(async (req) => {
   try {
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY');
     if (!apiKey) {
-      console.error('[list-elevenlabs-voices] ELEVENLABS_API_KEY not set');
+      console.error('[list-elevenlabs-shared-voices] ELEVENLABS_API_KEY not set');
       return new Response(
         JSON.stringify({ 
           error: 'Configuration error',
@@ -45,7 +45,13 @@ serve(async (req) => {
     // Map and validate query parameters
     const validParams = [
       'page_size',
+      'next_page_token',
       'search',
+      'language',
+      'accent',
+      'age',
+      'gender',
+      'use_case',
       'category',
       'voice_type',
       'sort',
@@ -70,11 +76,11 @@ serve(async (req) => {
     }
 
     // Build ElevenLabs API URL
-    const apiUrl = `https://api.elevenlabs.io/v2/voices${
+    const apiUrl = `https://api.elevenlabs.io/v1/shared-voices${
       queryParams.toString() ? `?${queryParams.toString()}` : ''
     }`;
 
-    console.log('[list-elevenlabs-voices] Fetching from ElevenLabs:', apiUrl);
+    console.log('[list-elevenlabs-shared-voices] Fetching from ElevenLabs:', apiUrl);
 
     const response = await fetch(apiUrl, {
       headers: {
@@ -85,7 +91,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error('[list-elevenlabs-voices] ElevenLabs API error:', {
+      console.error('[list-elevenlabs-shared-voices] ElevenLabs API error:', {
         status: response.status,
         statusText: response.statusText,
         error: errorData
@@ -113,22 +119,32 @@ serve(async (req) => {
     // Process and enhance voice data
     const processedVoices = data.voices.map(voice => ({
       ...voice,
+      // Ensure consistent structure with private voices
+      voice_id: voice.voice_id,
+      name: voice.name,
+      preview_url: voice.preview_url,
+      category: voice.category || voice.sharing?.category,
       labels: {
         ...voice.labels,
-        // Add language from verified_languages if available
+        ...voice.sharing?.labels,
         language: voice.verified_languages?.[0]?.language || 
                  voice.labels?.language || 
-                 'en'
+                 voice.sharing?.labels?.language ||
+                 'en',
+        accent: voice.verified_languages?.[0]?.accent ||
+                voice.labels?.accent ||
+                voice.sharing?.labels?.accent
       }
     }));
 
-    console.log(`[list-elevenlabs-voices] Successfully fetched ${processedVoices.length} voices`);
+    console.log(`[list-elevenlabs-shared-voices] Successfully fetched ${processedVoices.length} voices`);
     
     return new Response(
       JSON.stringify({ 
         voices: processedVoices,
         has_more: data.has_more || false,
-        total_count: data.total_count || processedVoices.length
+        total_count: data.total_count || processedVoices.length,
+        next_page_token: data.next_page_token
       }),
       { 
         status: 200,
@@ -141,7 +157,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('[list-elevenlabs-voices] Function error:', error);
+    console.error('[list-elevenlabs-shared-voices] Function error:', error);
     
     let status = 500;
     let message = 'An internal server error occurred';

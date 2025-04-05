@@ -23,14 +23,27 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'recharts', '@headlessui/react']
   },
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
+  },
   server: {
     port: 5173,
     proxy: {
-      '/api/elevenlabs': {
+      '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api\/elevenlabs/, '/elevenlabs')
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('[VITE PROXY] Proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log(`[VITE PROXY] Sending ${req.method} request to ${proxyReq.path}`);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log(`[VITE PROXY] Received response from ${req.url}: ${proxyRes.statusCode}`);
+          });
+        }
       }
     }
   }

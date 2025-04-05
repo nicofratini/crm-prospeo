@@ -5,18 +5,21 @@ import clsx from 'clsx';
 function ChatMessage({ message, isConsecutive }) {
   // Early return if message is null, undefined, or not an object
   if (!message || typeof message !== 'object') {
+    console.warn('Invalid message received:', message);
     return null;
   }
 
-  // Validate required properties exist and are of correct type
-  if (!message.type || typeof message.type !== 'string' ||
-      !message.text || typeof message.text !== 'string' ||
-      !message.timestamp) {
-    console.warn('Message object missing required properties or has invalid types:', message);
+  // Destructure with type checking
+  const { type, text, timestamp } = message;
+  
+  // Validate required fields
+  if (!type || !text) {
+    console.warn('Message missing required fields:', message);
     return null;
   }
-  
-  const isCustomer = message.type === 'customer';
+
+  const isCustomer = type === 'customer';
+  const messageTime = timestamp ? new Date(timestamp) : new Date();
   
   return (
     <div className={clsx(
@@ -30,12 +33,12 @@ function ChatMessage({ message, isConsecutive }) {
           ? 'bg-gray-100 dark:bg-dark-hover' 
           : 'bg-primary text-white'
       )}>
-        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+        <p className="text-sm whitespace-pre-wrap">{text}</p>
         <p className={clsx(
           'text-xs mt-1',
           isCustomer ? 'text-gray-500 dark:text-gray-400' : 'text-white/80'
         )}>
-          {format(new Date(message.timestamp), 'HH:mm')}
+          {format(messageTime, 'HH:mm')}
         </p>
       </div>
     </div>
@@ -73,16 +76,15 @@ export function ChatView({ conversation, onSendMessage }) {
 
   // Ensure messages is an array and filter out invalid messages
   const messages = Array.isArray(conversation.messages) 
-    ? conversation.messages
-        .filter(msg => msg && typeof msg === 'object' && msg !== null)
-        .filter(msg => 
-          msg.type && 
-          typeof msg.type === 'string' &&
-          msg.text &&
-          typeof msg.text === 'string' &&
-          msg.timestamp
-        )
+    ? conversation.messages.filter(msg => msg && typeof msg === 'object' && msg.type && msg.text)
     : [];
+
+  // Ensure customer object exists with default values
+  const customer = conversation.customer || {
+    name: 'Unknown Customer',
+    status: 'offline',
+    avatar: '/default-avatar.png'
+  };
 
   return (
     <>
@@ -90,21 +92,21 @@ export function ChatView({ conversation, onSendMessage }) {
       <div className="flex items-center gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
         <div className="relative">
           <img
-            src={conversation.customer?.avatar || '/default-avatar.png'}
-            alt={conversation.customer?.name || 'Customer'}
+            src={customer.avatar}
+            alt={customer.name}
             className="w-10 h-10 rounded-full"
           />
           <span className={clsx(
             'absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-dark-card',
-            conversation.customer?.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+            customer.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
           )} />
         </div>
         <div>
           <h2 className="text-base font-medium text-gray-900 dark:text-white">
-            {conversation.customer?.name || 'Unknown Customer'}
+            {customer.name}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {conversation.customer?.status === 'online' ? 'Online' : 'Offline'}
+            {customer.status === 'online' ? 'Online' : 'Offline'}
           </p>
         </div>
       </div>
@@ -112,7 +114,6 @@ export function ChatView({ conversation, onSendMessage }) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.map((message, index) => {
-          // Additional null check before accessing previous message
           const previousMessage = index > 0 ? messages[index - 1] : null;
           const isConsecutive = previousMessage && 
             previousMessage.type === message.type &&

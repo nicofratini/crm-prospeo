@@ -13,71 +13,79 @@ export function useAuth() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log('[useAuth CLEAN] useEffect mounting. Setting loadingAuth = TRUE.');
+    console.log('[useAuth] Setting up auth state listener');
     setLoadingAuth(true);
     let mounted = true;
 
-    // Setup the listener FIRST. It will also fire with the initial state.
+    // Handle initial session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!mounted) return;
+      
+      if (initialSession) {
+        console.log('[useAuth] Initial session found:', initialSession.user.email);
+        setSession(initialSession);
+        setUser(initialSession.user);
+        setIsAdmin(initialSession.user.user_metadata?.is_admin === true);
+      } else {
+        console.log('[useAuth] No initial session found');
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
+      }
+      
+      setLoadingAuth(false);
+    });
+
+    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, currentSession) => {
-        if (!mounted) {
-          console.log('[useAuth CLEAN] onAuthStateChange fired but unmounted.');
+      async (event, currentSession) => {
+        if (!mounted) return;
+        
+        console.log(`[useAuth] Auth state change: ${event}`, currentSession?.user?.email);
+
+        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+          navigate('/auth/login', { replace: true });
           return;
         }
-        console.log(`[useAuth CLEAN] onAuthStateChange Event: ${_event}`, currentSession?.user?.email);
 
-        // Update Session and User immediately
-        setSession(currentSession);
-        const currentUser = currentSession?.user ?? null;
-        setUser(currentUser);
-
-        // Determine Admin Status DIRECTLY from METADATA
-        let adminFlag = false;
-        if (currentUser) {
-          adminFlag = currentUser.user_metadata?.is_admin === true;
-          console.log(`[useAuth CLEAN] Metadata Admin Check: ${adminFlag}. Metadata:`, currentUser.user_metadata);
-        } else {
-          console.log('[useAuth CLEAN] No user session, setting isAdmin=false.');
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[useAuth] Session token refreshed');
         }
-        setIsAdmin(adminFlag);
-        setErrorAuth(null);
 
-        // Set loading false definitively HERE
-        console.log('[useAuth CLEAN] Setting loadingAuth = FALSE.');
-        setLoadingAuth(false);
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          setIsAdmin(currentSession.user.user_metadata?.is_admin === true);
+          setErrorAuth(null);
+        }
       }
     );
 
-    // Optional: Get initial session to potentially speed up first load
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      console.log('[useAuth CLEAN] Optional: Initial getSession completed.', initialSession?.user?.email);
-    }).catch(error => {
-      console.error('[useAuth CLEAN] Optional: Error during initial getSession:', error);
-    });
-
     return () => {
-      console.log('[useAuth CLEAN] useEffect cleanup. Unsubscribing.');
+      console.log('[useAuth] Cleaning up auth state listener');
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const login = useCallback(async ({ email, password }) => {
     setActionLoading(true);
     setErrorAuth(null);
-    console.log('[useAuth CLEAN] Attempting login...');
+    console.log('[useAuth] Attempting login...');
 
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      console.log('[useAuth CLEAN] Login API call successful.');
+      console.log('[useAuth] Login successful');
       toast.success('Connexion réussie !');
-      navigate('/dashboard');
       return true;
 
     } catch (err) {
-      console.error('[useAuth CLEAN] Login error:', err);
+      console.error('[useAuth] Login error:', err);
       
       let message = err.message;
       if (message === 'Email not confirmed') {
@@ -93,12 +101,12 @@ export function useAuth() {
     } finally {
       setActionLoading(false);
     }
-  }, [navigate]);
+  }, []);
 
   const register = useCallback(async ({ email, password }) => {
     setActionLoading(true);
     setErrorAuth(null);
-    console.log('[useAuth CLEAN] Attempting registration...');
+    console.log('[useAuth] Attempting registration...');
 
     try {
       const { error } = await supabase.auth.signUp({
@@ -111,13 +119,13 @@ export function useAuth() {
 
       if (error) throw error;
 
-      console.log('[useAuth CLEAN] Registration API call successful.');
+      console.log('[useAuth] Registration successful');
       toast.success('Inscription réussie ! Vérifiez vos emails pour confirmer votre compte.');
       navigate('/auth/login');
       return true;
 
     } catch (err) {
-      console.error('[useAuth CLEAN] Registration error:', err);
+      console.error('[useAuth] Registration error:', err);
       setErrorAuth(err.message);
       toast.error(err.message);
       return false;
@@ -130,33 +138,29 @@ export function useAuth() {
   const logout = useCallback(async () => {
     setActionLoading(true);
     setErrorAuth(null);
-    console.log('[useAuth CLEAN] Logging out...');
+    console.log('[useAuth] Logging out...');
 
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('[useAuth CLEAN] Sign out error (ignored for state clear):', error);
-      }
+      if (error) throw error;
 
-      console.log('[useAuth CLEAN] Logout API call finished.');
+      console.log('[useAuth] Logout successful');
       toast.success('Déconnexion réussie.');
 
-      // Clear state immediately for faster UI update
+      // Clear auth state
       setSession(null);
       setUser(null);
       setIsAdmin(false);
 
-      // Force navigation if needed
-      if (window.location.pathname !== '/auth/login') {
-        navigate('/auth/login', { replace: true });
-      }
+      // Navigate to login
+      navigate('/auth/login', { replace: true });
 
     } catch (err) {
-      console.error('[useAuth CLEAN] Unexpected logout error:', err);
+      console.error('[useAuth] Logout error:', err);
       setErrorAuth(err.message);
       toast.error('Erreur lors de la déconnexion.');
 
-      // Force state clear and navigation on error
+      // Clear auth state even on error
       setSession(null);
       setUser(null);
       setIsAdmin(false);
@@ -188,12 +192,6 @@ export function useAuth() {
     register,
     logout
   ]);
-
-  console.log(`[useAuth CLEAN] Hook returning value:`, {
-    loadingAuth: authValue.loading,
-    user: !!authValue.user,
-    isAdmin: authValue.isAdmin
-  });
 
   return authValue;
 }

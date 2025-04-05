@@ -3,79 +3,104 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
-// Enable CORS
-app.use(cors());
+// Enable CORS with specific origin
+app.use(cors({
+  origin: 'http://localhost:5173', // Allow requests from Vite dev server
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Create Supabase client with error handling
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing required Supabase environment variables');
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing required environment variables for Supabase connection');
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Proxy route for ElevenLabs voices
-app.get('/elevenlabs/voices', async (req, res) => {
-  console.log('[Express Server] Received request for ElevenLabs voices');
-
+// Proxy route for shared AI agents
+app.get('/api/ai/shared-agents', async (req, res) => {
   try {
-    // Add timeout to the Edge Function call
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout')), 10000)
+    console.log('[Express Server] Proxying request to list-shared-agents endpoint');
+    
+    // Get Authorization header from incoming request
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing Authorization header' });
+    }
+
+    // Invoke the Edge Function
+    const { data, error: invokeError } = await supabase.functions.invoke(
+      'list-shared-agents',
+      {
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        }
+      }
     );
 
-    const fetchPromise = supabase.functions.invoke('list-elevenlabs-voices', {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    // Race between the fetch and timeout
-    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-
-    if (error) {
-      console.error('[Express Server] Edge Function error:', error);
-      return res.status(500).json({
-        error: 'Failed to fetch voices',
-        message: error.message || 'Unknown error occurred'
-      });
+    if (invokeError) {
+      console.error('[Express Server] Edge Function error:', invokeError);
+      throw invokeError;
     }
 
-    if (!data || !data.voices) {
-      console.error('[Express Server] Invalid response format from Edge Function');
-      return res.status(502).json({
-        error: 'Invalid response',
-        message: 'Received invalid data format from voice service'
-      });
-    }
-
-    console.log(`[Express Server] Successfully retrieved ${data.voices.length} voices`);
+    console.log('[Express Server] Successfully retrieved shared agents');
     res.json(data);
 
   } catch (error) {
     console.error('[Express Server] Error:', error);
+    res.status(error.status || 500).json({ 
+      error: error.message || 'Failed to fetch shared agents' 
+    });
+  }
+});
+
+// Proxy route for assigning shared agent
+app.post('/api/ai/assign-agent', async (req, res) => {
+  try {
+    console.log('[Express Server] Proxying request to assign-shared-agent endpoint');
     
-    // Handle specific error types
-    if (error.message === 'Request timeout') {
-      return res.status(504).json({
-        error: 'Gateway Timeout',
-        message: 'Request to voice service timed out'
-      });
+    // Get Authorization header from incoming request
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing Authorization header' });
     }
 
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: error.message || 'An unexpected error occurred'
+    // Invoke the Edge Function
+    const { data, error: invokeError } = await supabase.functions.invoke(
+      'assign-shared-agent',
+      {
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        },
+        body: req.body
+      }
+    );
+
+    if (invokeError) {
+      console.error('[Express Server] Edge Function error:', invokeError);
+      throw invokeError;
+    }
+
+    console.log('[Express Server] Successfully assigned agent');
+    res.json(data);
+
+  } catch (error) {
+    console.error('[Express Server] Error:', error);
+    res.status(error.status || 500).json({ 
+      error: error.message || 'Failed to assign agent' 
     });
   }
 });
@@ -84,24 +109,20 @@ app.get('/elevenlabs/voices', async (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok',
-    timestamp: new Date().toISOString()
+    supabaseConnected: !!supabase
   });
 });
 
-// Global error handler
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: 'An unexpected error occurred'
+  console.error('[Express Server] Unhandled error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    details: err.message
   });
 });
 
-// Start server
 app.listen(port, () => {
   console.log(`[Express Server] Proxy server running at http://localhost:${port}`);
-  console.log('[Express Server] Environment:', {
-    port,
-    supabaseConfigured: !!supabaseUrl && !!supabaseAnonKey
-  });
+  console.log('[Express Server] Supabase client initialized');
 });
