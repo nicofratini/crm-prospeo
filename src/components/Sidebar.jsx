@@ -60,7 +60,7 @@ const QuickAccessItem = ({ image, name, lastSeen, amount, onClick }) => (
   </button>
 );
 
-export default function Sidebar({ isOpen, onClose, currentPage, onMenuItemClick }) {
+export default function Sidebar({ isOpen, onClose, currentPage = 'dashboard', onMenuItemClick = () => {} }) {
   return (
     <aside className={clsx(
       'fixed inset-y-0 left-0 z-40 w-80 bg-white dark:bg-dark-card border-r border-gray-100 dark:border-gray-800 lg:static transform transition-transform duration-300 ease-in-out',
